@@ -1,5 +1,19 @@
 import axios from "axios";
+import { z } from 'zod'
 import { SearchType } from "../types";
+
+//* Zood
+
+const Weather = z.object({
+  name: z.string(),
+  main: z.object({
+    temp: z.number(),
+    temp_max: z.number(),
+    temp_min: z.number()
+  })
+})
+
+type Weather = z.infer<typeof Weather>
 
 export default function useWeather() {
   
@@ -17,9 +31,20 @@ export default function useWeather() {
 
       const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${appId}`
 
-      const {data: weatherResul} = await axios(weatherUrl)
+      // Castear el type
+      // const {data: weatherResul} = await axios<Weather>(weatherUrl)
+      // console.log(weatherResul.name);
 
-      console.log(weatherResul);
+      //? Zod
+      const {data: weatherResul} = await axios<Weather>(weatherUrl)
+      const result = Weather.safeParse(weatherResul)
+      if (result.success) {
+        console.log(result.data.name);
+        console.log(result.data.main.temp);
+      } else {
+        console.log('Respuesta mal formada');
+        
+      }
       
 
     } catch (error) {
