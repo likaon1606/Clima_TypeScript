@@ -1,9 +1,22 @@
 import axios from "axios";
-import { z } from 'zod'
+import { set, z } from 'zod'
+// import { object, string, number, InferOutput, parse } from 'valibot'
 import { SearchType } from "../types";
+import { useMemo, useState } from "react";
 
-//* Zood
+//* TYPE GUARD O ASERTION
+// function isWeatherResponse(weather : unknown) : weather is Weather {
+//   return (
+//     Boolean(weather) &&
+//     typeof weather === 'object' &&
+//     typeof (weather as Weather).name === 'string' &&
+//     typeof (weather as Weather).main.temp === 'number' &&
+//     typeof (weather as Weather).main.temp_max === 'number' &&
+//     typeof (weather as Weather).main.temp_min === 'number'
+//   )
+// }
 
+//? Zood Es de las mejores opciones 
 const Weather = z.object({
   name: z.string(),
   main: z.object({
@@ -12,10 +25,29 @@ const Weather = z.object({
     temp_min: z.number()
   })
 })
+export type Weather = z.infer<typeof Weather>
 
-type Weather = z.infer<typeof Weather>
+//? Valibot
+// const WeatherSchema = object({
+//   name: string(),
+//   main: object({
+//     temp: number(),
+//     temp_max: number(),
+//     temp_min: number()
+//   })
+// })
+// type Weather = InferOutput<typeof WeatherSchema>
 
 export default function useWeather() {
+
+  const [weather, setWeather] = useState<Weather>({
+    name: '',
+    main: {
+      temp: 0,
+      temp_max: 0,
+      temp_min: 0
+    }
+  })
   
   const fetchWeather = async (search: SearchType) => {
    
@@ -31,22 +63,39 @@ export default function useWeather() {
 
       const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${appId}`
 
-      // Castear el type
+      //* Castear el type
       // const {data: weatherResul} = await axios<Weather>(weatherUrl)
       // console.log(weatherResul.name);
 
-      //? Zod
+      //* Type Guards
+      // const {data: weatherResul} = await axios(weatherUrl)
+      // const result = isWeatherResponse(weatherResul)
+      // if (result) {
+      //   console.log(weatherResul.name);
+      // } else {
+      //   console.log('Respuesta mal formada');
+      // }
+
+
+      //? Zod * Es de las mejores alternativas para validar el JSON con el schema para tipar las respuestas que se obtiene con "axios"
+
       const {data: weatherResul} = await axios<Weather>(weatherUrl)
       const result = Weather.safeParse(weatherResul)
       if (result.success) {
-        console.log(result.data.name);
-        console.log(result.data.main.temp);
+        setWeather(result.data)
       } else {
         console.log('Respuesta mal formada');
         
       }
-      
 
+      //? Valibot Es la "MEJOR" para validar el JSON con el schema para tipar las respuestas que se obtiene con "axios"
+      // const {data: weatherResul} = await axios(weatherUrl)
+      // const result = parse(WeatherSchema, weatherResul)
+      // if (result) {
+      //   console.log(result.name);
+      //   console.log(result.main.temp);
+      // }
+      
     } catch (error) {
       console.log(error);
       
@@ -54,7 +103,11 @@ export default function useWeather() {
     
   }
 
+  const hasWeatherData = useMemo(() => weather.name, [weather])
+
   return {
-    fetchWeather
+    weather,
+    fetchWeather,
+    hasWeatherData
   }
 }
